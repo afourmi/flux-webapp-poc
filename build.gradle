@@ -4,17 +4,21 @@ buildscript {
 	}
 	repositories {
 		mavenCentral()
-		maven { url "https://repo.spring.io/snapshot" }
-		maven { url "https://repo.spring.io/milestone" }
+        maven { url 'https://repo.spring.io/libs-snapshot' }
+//		maven { url "https://repo.spring.io/snapshot" }
+//		maven { url "https://repo.spring.io/milestone" }
 	}
 	dependencies {
 		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
 	}
 }
 
+
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'idea'
 apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
 
 jar {
 	baseName = 'flux-webapp-poc'
@@ -22,6 +26,8 @@ jar {
 }
 
 sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
 
 repositories {
 	mavenCentral()
@@ -31,13 +37,13 @@ repositories {
 
 
 dependencies {
-	compile('org.springframework.boot:spring-boot-starter')
-	compile('org.springframework.boot:spring-boot-starter-webflux')
-	compile('org.springframework.boot:spring-boot-starter-data-mongodb')
-	compile('de.flapdoodle.embed:de.flapdoodle.embed.mongo')
-	compile('org.mongodb:mongodb-driver-reactivestreams:1.3.0')
-	compile('org.slf4j:log4j-over-slf4j:1.7.24')
+	compile("org.springframework.boot:spring-boot-starter")
+	compile("org.springframework.boot:spring-boot-starter-webflux")
+	compile("org.springframework.boot:spring-boot-starter-data-mongodb")
+	compile("de.flapdoodle.embed:de.flapdoodle.embed.mongo")
+	compile("org.mongodb:mongodb-driver-reactivestreams")
+	compile("org.slf4j:log4j-over-slf4j:1.7.24")
 
-	compile('io.projectreactor.addons:reactor-test')
-	testCompile('org.springframework.boot:spring-boot-starter-test')
+	compile("io.projectreactor.addons:reactor-test")
+	testCompile("org.springframework.boot:spring-boot-starter-test")
 }

@@ -23,10 +23,9 @@ public class FluxWebappPocApplicationTests {
 
         WebClient client = WebClient.create("http://localhost:19080");
 
-        Flux<Customer> customerFlux = client.get().uri("/customer").accept(APPLICATION_STREAM_JSON).exchange().subscribe()
-                .flatMap(response -> response.bodyToFlux(Customer.class))
+        Mono<Customer> customerFlux = client.get().uri("/customer").accept(APPLICATION_STREAM_JSON).exchange().subscribe()
+                .flatMap(response -> response.bodyToMono(Customer.class))
                 .doOnEach(customerSignal -> System.out.println(customerSignal.get()));
-
 
         customerFlux.subscribe();
 
@@ -39,7 +38,7 @@ public class FluxWebappPocApplicationTests {
 		WebClient client = WebClient.create("http://localhost:19080");
 
 		Flux<Customer> newCustomers = Flux.just(new Customer("Aurélien", "Fourmi"));
-		Mono<ClientResponse> response = client.post().uri("/customer").accept(APPLICATION_STREAM_JSON).exchange(newCustomers, Customer.class);
+		Mono<ClientResponse> response = client.post().uri("/customer").accept(APPLICATION_STREAM_JSON).body(newCustomers, Customer.class).exchange();
 		response.subscribe();
 
 		Thread.sleep(1000);

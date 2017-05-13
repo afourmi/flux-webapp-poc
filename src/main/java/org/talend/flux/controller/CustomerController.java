@@ -31,7 +31,7 @@ public class CustomerController {
 
     @PostMapping("/customer")
     public Mono<Void> create(@RequestBody Publisher<Customer> customerStream) {
-        return this.repository.save(customerStream).then();
+        return this.repository.saveAll(customerStream).then();
     }
 
 }

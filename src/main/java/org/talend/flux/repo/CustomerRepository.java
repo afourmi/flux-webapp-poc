@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
-import org.springframework.data.mongodb.repository.InfiniteStream;
 import org.springframework.stereotype.Repository;
 
 import reactor.core.publisher.Flux;
@@ -27,7 +26,6 @@ public class CustomerRepository {
         return template.insertAll(customers);
     }
 
-    @InfiniteStream
     public Flux<Customer> findAll() {
         return mongoCustomerRepository.findAll();
     }
