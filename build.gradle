@@ -43,6 +43,7 @@ dependencies {
 	compile("de.flapdoodle.embed:de.flapdoodle.embed.mongo")
 	compile("org.mongodb:mongodb-driver-reactivestreams")
 	compile("org.slf4j:log4j-over-slf4j:1.7.24")
+	compile("com.typesafe.akka:akka-stream-kafka_2.11:0.16")
 
 	compile("io.projectreactor.addons:reactor-test")
 	testCompile("org.springframework.boot:spring-boot-starter-test")
