@@ -1,14 +1,7 @@
 package org.talend.flux.controller;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,16 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.talend.flux.repo.Customer;
 import org.talend.flux.repo.MongoCustomerRepository;
 
-import akka.Done;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import akka.NotUsed;
-import akka.actor.ActorSystem;
-import akka.kafka.ConsumerSettings;
+import akka.japi.function.Function;
 import akka.kafka.ProducerMessage;
 import akka.kafka.ProducerSettings;
-import akka.kafka.Subscriptions;
-import akka.kafka.javadsl.Consumer;
 import akka.kafka.javadsl.Producer;
-import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -37,30 +27,20 @@ import reactor.core.publisher.Mono;
 @RestController
 public class CustomerController {
 
-    protected final ActorSystem system = ActorSystem.create("kafka-messaging");
-
-    protected final Materializer materializer = ActorMaterializer.create(system);
-
-    private ProducerSettings<String, String> producerSettings = ProducerSettings
-            .create(system, new StringSerializer(), new StringSerializer())
-            .withBootstrapServers("localhost:9092");
-
-    private KafkaProducer<String, String> kafkaProducer = producerSettings.createKafkaProducer();
-
-    private ConsumerSettings<String, String> consumerSettings = ConsumerSettings
-            .create(system, new StringDeserializer(), new StringDeserializer())
-            .withBootstrapServers("localhost:9092")
-            .withGroupId("group1")
-            .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-    CompletionStage<Done> customers = Consumer
-            .plainSource(consumerSettings, Subscriptions.assignment(new TopicPartition("customers", 0)))
-            .mapAsync(1, record -> {
-                System.out.println("consuming customer " + record.value());
-                return CompletableFuture.completedFuture(Done.getInstance());
-            })
-            .runWith(Sink.ignore(), materializer);
     @Autowired
     private MongoCustomerRepository repository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private KafkaProducer<String, String> kafkaProducer;
+
+    @Autowired
+    private ProducerSettings<String, String> producerSettings;
+
+    @Autowired
+    private Materializer materializer;
 
     /**
      * See
@@ -78,17 +58,22 @@ public class CustomerController {
 
         Source<Customer, NotUsed> source = Source.fromPublisher(customerStream);
 
-        CompletionStage<Done> done = source.map(customer -> {
-            String elem = String.valueOf(customer);
+        source.map(customer -> {
+            String key = customer.id;
+            String customerAsJson = objectMapper.writeValueAsString(customer);
             return new ProducerMessage.Message<String, String, Customer>(
-                    new ProducerRecord<>("customers", 0, null, elem), customer);
-        }).via(Producer.flow(producerSettings)).map(result -> {
-            ProducerRecord<String, String> record = result.message().record();
-            System.out.println(record);
-            return result;
-        }).runWith(Sink.ignore(), materializer);
+                    new ProducerRecord<>("customers", key, customerAsJson), customer);
+        }).via(Producer.flow(producerSettings, kafkaProducer)).map(debugRecord()).runWith(Sink.ignore(), materializer);
 
         return this.repository.saveAll(customerStream).then();
     }
 
+    private Function<ProducerMessage.Result<String, String, Customer>, ProducerMessage.Result<String, String, Customer>>
+            debugRecord() {
+        return result -> {
+            ProducerRecord<String, String> record = result.message().record();
+            System.out.println("Send record: " + record);
+            return result;
+        };
+    }
 }
