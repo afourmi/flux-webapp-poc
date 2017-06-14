@@ -3,6 +3,8 @@ package org.talend.flux.controller;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +29,8 @@ import reactor.core.publisher.Mono;
 @RestController
 public class CustomerController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(CustomerController.class);
+
     @Autowired
     private MongoCustomerRepository repository;
 
@@ -49,7 +53,7 @@ public class CustomerController {
      */
     @GetMapping(path = "/customer")
     public Flux<Customer> list() {
-        System.out.println("get customers");
+        LOG.info("get customers");
         return repository.findAll();
     }
 
@@ -58,21 +62,31 @@ public class CustomerController {
 
         Source<Customer, NotUsed> source = Source.fromPublisher(customerStream);
 
-        source.map(customer -> {
-            String key = customer.id;
-            String customerAsJson = objectMapper.writeValueAsString(customer);
-            return new ProducerMessage.Message<String, String, Customer>(
-                    new ProducerRecord<>("customers", key, customerAsJson), customer);
-        }).via(Producer.flow(producerSettings, kafkaProducer)).map(debugRecord()).runWith(Sink.ignore(), materializer);
+        source
+                .map(getRecordFromCustomer())
+                .via(Producer.flow(producerSettings, kafkaProducer))
+                .map(debugRecord())
+                .runWith(Sink.ignore(), materializer);
 
-        return this.repository.saveAll(customerStream).then();
+        LOG.info("start saving all");
+        Mono<Void> then = this.repository.saveAll(customerStream).then();
+        LOG.info("end saving all");
+        return then;
+    }
+
+    private Function<Customer, ProducerMessage.Message<String, String, Customer>> getRecordFromCustomer() {
+        return customer -> {
+            String key = customer.toString();
+            String customerAsJson = objectMapper.writeValueAsString(customer);
+            return new ProducerMessage.Message<>(new ProducerRecord<>("customers", key, customerAsJson), customer);
+        };
     }
 
     private Function<ProducerMessage.Result<String, String, Customer>, ProducerMessage.Result<String, String, Customer>>
             debugRecord() {
         return result -> {
             ProducerRecord<String, String> record = result.message().record();
-            System.out.println("Send record: " + record);
+            LOG.info("Send record: " + record.key());
             return result;
         };
     }

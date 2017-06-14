@@ -8,6 +8,8 @@ import java.util.concurrent.CompletionStage;
 import javax.annotation.PostConstruct;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.talend.flux.repo.Customer;
@@ -25,6 +27,8 @@ import akka.stream.javadsl.Sink;
 
 @Component
 public class CustomerConsumer {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CustomerConsumer.class);
 
     @Autowired
     private ActorMaterializer materializer;
@@ -50,10 +54,9 @@ public class CustomerConsumer {
         return record -> {
             try{
             Customer customer = objectMapper.readValue(record.value(), Customer.class);
-            System.out.println("consuming customer " + customer.toString());
+            LOG.info("consuming customer " + customer.toString());
             } catch (Exception e){
-                System.out.println("Error when consuming " + record);
-                CompletableFuture.completedFuture(Done.getInstance())
+                LOG.error("Error when consuming " + record);
             }
             return CompletableFuture.completedFuture(Done.getInstance());
         };
