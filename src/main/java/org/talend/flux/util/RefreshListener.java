@@ -12,7 +12,7 @@ import org.talend.flux.repo.Customer;
 import org.talend.flux.repo.CustomerRepository;
 import org.talend.flux.repo.MongoCustomerRepository;
 
-@Component
+//@Component
 public class RefreshListener implements ApplicationListener<ContextRefreshedEvent> {
 
     @Autowired

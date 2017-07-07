@@ -24,7 +24,6 @@ import akka.stream.Materializer;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @RestController
 public class CustomerController {
@@ -58,20 +57,14 @@ public class CustomerController {
     }
 
     @PostMapping("/customer")
-    public Mono<Void> create(@RequestBody Publisher<Customer> customerStream) {
-
-        Source<Customer, NotUsed> source = Source.fromPublisher(customerStream);
-
+    public void create(@RequestBody Publisher<Customer> customerStream) {
+        Flux<Customer> savecEntities = this.repository.saveAll(customerStream);
+        Source<Customer, NotUsed> source = Source.fromPublisher(savecEntities);
         source
                 .map(getRecordFromCustomer())
                 .via(Producer.flow(producerSettings, kafkaProducer))
                 .map(debugRecord())
                 .runWith(Sink.ignore(), materializer);
-
-        LOG.info("start saving all");
-        Mono<Void> then = this.repository.saveAll(customerStream).then();
-        LOG.info("end saving all");
-        return then;
     }
 
     private Function<Customer, ProducerMessage.Message<String, String, Customer>> getRecordFromCustomer() {
